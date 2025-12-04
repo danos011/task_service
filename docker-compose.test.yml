@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  postgres_test:
+    image: postgres:14
+    container_name: task_service_postgres_test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: task_service_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq_test:
+    image: rabbitmq:3-management
+    container_name: task_service_rabbitmq_test
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    volumes:
+      - rabbitmq_test_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  tests:
+    build: .
+    container_name: task_service_tests
+    environment:
+      POSTGRES_HOST: postgres_test
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: task_service_test
+      RABBITMQ_HOST: rabbitmq_test
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_QUEUE: tasks
+      LOG_LEVEL: INFO
+      LOG_FILE: logs/test.log
+      PYTHONPATH: /app
+    volumes:
+      - ./backend:/app/backend
+      - ./logs:/app/logs
+    depends_on:
+      postgres_test:
+        condition: service_healthy
+      rabbitmq_test:
+        condition: service_healthy
+    command: pytest backend/tests/ -v --tb=short
+
+volumes:
+  postgres_test_data:
+  rabbitmq_test_data:
+
+
