@@ -67,9 +67,24 @@ async def main():
     """Главная функция worker."""
     logger.info("Starting worker...")
     
-    connection = await aio_pika.connect_robust(
-        settings.rabbitmq_url
-    )
+    max_retries = 10
+    retry_delay = 5
+    
+    for attempt in range(max_retries):
+        try:
+            connection = await aio_pika.connect_robust(
+                settings.rabbitmq_url,
+                timeout=10
+            )
+            logger.info("Connected to RabbitMQ")
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                logger.warning(f"Failed to connect to RabbitMQ (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {retry_delay}s...")
+                await asyncio.sleep(retry_delay)
+            else:
+                logger.error(f"Failed to connect to RabbitMQ after {max_retries} attempts: {e}")
+                raise
     
     channel = await connection.channel()
     

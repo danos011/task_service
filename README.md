@@ -54,6 +54,7 @@ Volumes:
 <a id="sec-reqs"></a>
 
 - Docker, Docker Compose
+- Python 3.11 (для локальной разработки)
 - Открытые порты 8000/15672/5672/5432
 
 ---
